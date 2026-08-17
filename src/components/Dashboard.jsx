@@ -3,7 +3,7 @@ import {
   blocksDone,
   completionRatio,
 } from '../context/AppContext'
-import { SCHEDULE, PROJECT_MINUTES_GOAL } from '../constants/schedule'
+import { PROJECT_MINUTES_GOAL } from '../constants/schedule'
 import { Flame, Bolt, Star, Book, Target } from './Icons'
 
 function StatCard({ icon, label, value, sub, accent }) {
@@ -30,12 +30,18 @@ function StatCard({ icon, label, value, sub, accent }) {
 }
 
 export default function Dashboard({ dateKey }) {
-  const { getDay, streaks } = useApp()
+  const { getDay, streaks, schedule } = useApp()
   const record = getDay(dateKey)
 
+  // The "hero" block (or one literally named project) drives the project-hours
+  // stat. Guarded so it never crashes if that block was edited away.
+  const heroBlock = schedule.find((b) => b.hero) || schedule.find((b) => b.id === 'project')
   const pct = Math.round(completionRatio(record) * 100)
   const projectMinutes = record.focus?.project || 0
-  const projectFromBlock = record.blocks?.project ? SCHEDULE.find((b) => b.id === 'project').projectMinutes : 0
+  const projectFromBlock =
+    heroBlock && record.blocks?.[heroBlock.id]
+      ? heroBlock.projectMinutes || PROJECT_MINUTES_GOAL
+      : 0
   const projectTotal = Math.max(projectMinutes, projectFromBlock)
   const projectHrs = (projectTotal / 60).toFixed(projectTotal % 60 === 0 ? 0 : 1)
   const hasSkill = Boolean(record.skill?.trim())
@@ -47,7 +53,7 @@ export default function Dashboard({ dateKey }) {
         icon={<Target className="h-5 w-5" />}
         label="Daily completion"
         value={`${pct}%`}
-        sub={`${blocksDone(record)}/${SCHEDULE.length} blocks`}
+        sub={`${blocksDone(record)}/${schedule.length} blocks`}
         accent="bg-project-100 text-project-600 dark:bg-project-500/20 dark:text-project-300"
       />
       <StatCard

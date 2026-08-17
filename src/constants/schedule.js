@@ -51,7 +51,11 @@ export const BLOCK_TYPES = {
   },
 }
 
-export const SCHEDULE = [
+// The built-in default. The user's edited schedule is stored in localStorage
+// (`dt.schedule`) and provided through AppContext; `SCHEDULE` below is a live
+// binding that AppProvider keeps pointed at whichever is active, so every
+// component and helper that imports `SCHEDULE` reflects edits automatically.
+export const DEFAULT_SCHEDULE = [
   { id: 'wake', start: '07:00', end: '07:30', title: 'Wake up + Morning routine', type: 'routine' },
   { id: 'breakfast', start: '07:30', end: '08:00', title: 'Breakfast + Plan the day', type: 'meal' },
   { id: 'company1', start: '08:00', end: '12:00', title: 'Company Work (Deep Focus)', type: 'company' },
@@ -73,6 +77,25 @@ export const SCHEDULE = [
   { id: 'winddown', start: '23:15', end: '00:00', title: 'Wind-down routine', type: 'routine' },
   { id: 'sleep', start: '00:00', end: '00:30', title: 'Sleep', type: 'sleep' },
 ]
+
+// Live "active" schedule. Reassigned by setActiveSchedule() from AppProvider.
+// Thanks to ES-module live bindings, every `import { SCHEDULE }` sees updates.
+export let SCHEDULE = DEFAULT_SCHEDULE
+
+export function setActiveSchedule(next) {
+  SCHEDULE = Array.isArray(next) && next.length ? next : DEFAULT_SCHEDULE
+}
+
+// Create a blank new block with a stable unique id.
+export function makeBlock(seed = 0) {
+  return {
+    id: `blk_${seed}_${Math.random().toString(36).slice(2, 7)}`,
+    start: '12:00',
+    end: '13:00',
+    title: 'New task',
+    type: 'routine',
+  }
+}
 
 // Goal: how many focused project minutes per day count as a "full" project day.
 export const PROJECT_MINUTES_GOAL = 180

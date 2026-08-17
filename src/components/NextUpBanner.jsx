@@ -1,25 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { SCHEDULE, BLOCK_TYPES } from '../constants/schedule'
-import {
-  prettyTime,
-  blockInterval,
-  fromKey,
-  addDays,
-  toKey,
-} from '../utils/dates'
+import { prettyTime, scheduleDayInterval, toKey } from '../utils/dates'
 import { toast } from '../utils/toast'
 import { Bell, BellOff, Bolt, Clock } from './Icons'
 
 const WARN_SECONDS = 5 * 60 // nudge 5 minutes before a block starts
-
-// Anchor a block to its real interval for the schedule-day `dateKey`. The
-// after-midnight tail (start hour < 7) belongs to the next calendar day.
-function localInterval(block, dateKey) {
-  const startHour = Number(block.start.split(':')[0])
-  const base = startHour < 7 ? fromKey(addDays(dateKey, 1)) : fromKey(dateKey)
-  return blockInterval(block, base)
-}
 
 // Next occurrence of a "HH:MM" clock relative to `from` (used for reminders).
 function nextOccurrence(clock, from) {
@@ -66,7 +52,7 @@ function timeColor(progress) {
 function resolveView(now, record) {
   const key = toKey(now)
   const rows = SCHEDULE.map((block) => {
-    const { start, end } = localInterval(block, key)
+    const { start, end } = scheduleDayInterval(block, key)
     return {
       block,
       start,

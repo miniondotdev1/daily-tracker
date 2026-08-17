@@ -1,10 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useApp, projectHoursMet } from '../context/AppContext'
-import {
-  SCHEDULE,
-  BLOCK_TYPES,
-  ACCENT_CLASSES,
-} from '../constants/schedule'
+import { BLOCK_TYPES, ACCENT_CLASSES } from '../constants/schedule'
 import { prettyTime } from '../utils/dates'
 import { toast } from '../utils/toast'
 import {
@@ -14,21 +10,30 @@ import {
   pick,
 } from '../utils/motivational'
 import { Check, Bolt, DoorOpen, Close } from './Icons'
+import ScheduleEditor from './ScheduleEditor'
 
 export default function ScheduleTracker({ dateKey }) {
-  const { getDay, toggleBlock, toggleExcused, toggleSkipped, clearBlockFlags } = useApp()
+  const {
+    schedule,
+    getDay,
+    toggleBlock,
+    toggleExcused,
+    toggleSkipped,
+    clearBlockFlags,
+  } = useApp()
   const record = getDay(dateKey)
-  const doneCount = SCHEDULE.filter((b) => record.blocks[b.id]).length
+  const [editing, setEditing] = useState(false)
+  const doneCount = schedule.filter((b) => record.blocks[b.id]).length
 
   // The "next" block to nudge momentum: first block that's not completed, away,
   // or marked not-done.
   const nextBlockId = useMemo(
     () =>
-      SCHEDULE.find(
+      schedule.find(
         (b) =>
           !record.blocks[b.id] && !record.excused?.[b.id] && !record.skipped?.[b.id]
       )?.id,
-    [record.blocks, record.excused, record.skipped]
+    [schedule, record.blocks, record.excused, record.skipped]
   )
 
   const handleAway = (block) => {
@@ -68,7 +73,7 @@ export default function ScheduleTracker({ dateKey }) {
         tone: 'project',
         duration: 4200,
       })
-    } else if (completedAfter === SCHEDULE.length) {
+    } else if (completedAfter === schedule.length) {
       toast(pick(DAY_DONE_QUOTES, doneCount), {
         emoji: '🏆',
         tone: 'success',
@@ -76,7 +81,7 @@ export default function ScheduleTracker({ dateKey }) {
       })
     } else {
       // Point at the next block to keep momentum going.
-      const remaining = SCHEDULE.find(
+      const remaining = schedule.find(
         (b) => b.id !== block.id && !record.blocks[b.id]
       )
       const msg = remaining
@@ -88,18 +93,27 @@ export default function ScheduleTracker({ dateKey }) {
 
   return (
     <section className="card p-4 sm:p-5">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-2">
         <h2 className="section-title">
           <span aria-hidden>🗓️</span> Today’s Schedule
         </h2>
-        <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-          {doneCount}/{SCHEDULE.length} done
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+            {doneCount}/{schedule.length} done
+          </span>
+          <button
+            onClick={() => setEditing(true)}
+            className="btn-ghost h-8 px-2.5 text-xs"
+            title="Edit your schedule"
+          >
+            ✏️ Edit
+          </button>
+        </div>
       </div>
 
       <ul className="space-y-2.5">
-        {SCHEDULE.map((block, i) => {
-          const type = BLOCK_TYPES[block.type]
+        {schedule.map((block, i) => {
+          const type = BLOCK_TYPES[block.type] || BLOCK_TYPES.routine
           const accent = ACCENT_CLASSES[type.accent]
           const done = Boolean(record.blocks[block.id])
           const excused = Boolean(record.excused?.[block.id])
@@ -263,10 +277,12 @@ export default function ScheduleTracker({ dateKey }) {
           </span>
         ) : (
           <span className="text-slate-500 dark:text-slate-400">
-            Your 19:00 Project block is the day’s MVP. Protect it.
+            Your Project block is the day’s MVP. Protect it.
           </span>
         )}
       </div>
+
+      {editing && <ScheduleEditor onClose={() => setEditing(false)} />}
     </section>
   )
 }

@@ -1,21 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext'
-import { SCHEDULE, BLOCK_TYPES } from '../constants/schedule'
-import { fromKey, addDays, blockInterval, prettyTime } from '../utils/dates'
+import { BLOCK_TYPES } from '../constants/schedule'
+import { scheduleDayInterval, prettyTime } from '../utils/dates'
 import { punishmentFor } from '../constants/punishments'
 import { toast } from '../utils/toast'
 import { Check, Dumbbell, DoorOpen, Snow } from './Icons'
 
-// Anchor a block to its real interval for the schedule-day `dateKey`. The
-// after-midnight tail (start hour < 7) belongs to the next calendar day.
-function localInterval(block, dateKey) {
-  const startHour = Number(block.start.split(':')[0])
-  const base = startHour < 7 ? fromKey(addDays(dateKey, 1)) : fromKey(dateKey)
-  return blockInterval(block, base)
-}
-
 export default function Accountability({ dateKey }) {
-  const { getDay, toggleExcused, excuseBlocks, markPunishmentDone } = useApp()
+  const { schedule, getDay, toggleExcused, excuseBlocks, markPunishmentDone } = useApp()
   const record = getDay(dateKey)
   const [now, setNow] = useState(() => new Date())
 
@@ -26,8 +18,8 @@ export default function Accountability({ dateKey }) {
   }, [])
 
   const model = useMemo(() => {
-    const rows = SCHEDULE.map((block) => {
-      const { start, end } = localInterval(block, dateKey)
+    const rows = schedule.map((block) => {
+      const { start, end } = scheduleDayInterval(block, dateKey)
       const completed = Boolean(record.blocks?.[block.id])
       const excused = Boolean(record.excused?.[block.id])
       const skipped = Boolean(record.skipped?.[block.id])
@@ -45,7 +37,7 @@ export default function Accountability({ dateKey }) {
       excused: rows.filter((r) => r.status === 'excused').length,
       pending: rows.filter((r) => r.status === 'pending'),
     }
-  }, [record, dateKey, now])
+  }, [schedule, record, dateKey, now])
 
   const { finished, missed, excused, pending, rows } = model
   const countable = finished + missed.length // excused/pending don't count against you
@@ -195,7 +187,7 @@ export default function Accountability({ dateKey }) {
         </div>
       ) : (
         <div className="rounded-xl border border-dashed border-slate-300 py-6 text-center text-sm text-slate-400 dark:border-slate-700">
-          {pending.length + finished === SCHEDULE.length && finished === 0
+          {pending.length + finished === schedule.length && finished === 0
             ? 'Your day hasn’t started yet — no penalties.'
             : 'No penalties owed. Keep it clean! 💪'}
         </div>

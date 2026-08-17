@@ -8,6 +8,9 @@ import {
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import {
   SCHEDULE,
+  DEFAULT_SCHEDULE,
+  setActiveSchedule,
+  makeBlock,
   PROJECT_MINUTES_GOAL,
 } from '../constants/schedule'
 import { BADGES } from '../constants/badges'
@@ -17,6 +20,7 @@ import {
   addDays,
   weekKey,
   toKey,
+  WRAP_HOUR,
 } from '../utils/dates'
 
 const AppContext = createContext(null)
@@ -83,8 +87,8 @@ function mergeDay(base, patch) {
 }
 
 // ---- Pure helpers used across the app --------------------------------------
-
-const TOTAL_BLOCKS = SCHEDULE.length
+// These read the live `SCHEDULE` binding at call time, so they always reflect
+// the user's current (possibly edited) schedule.
 
 export function blocksDone(record) {
   if (!record || !record.blocks) return 0
@@ -99,7 +103,7 @@ export function completionRatio(record) {
     (n, b) => n + (record.excused?.[b.id] && !record.blocks?.[b.id] ? 1 : 0),
     0
   )
-  const denom = Math.max(1, TOTAL_BLOCKS - excusedNotDone)
+  const denom = Math.max(1, SCHEDULE.length - excusedNotDone)
   return Math.min(1, blocksDone(record) / denom)
 }
 
@@ -128,6 +132,66 @@ export function AppProvider({ children }) {
   })
   // Persisted unlock timestamps so a badge stays unlocked even if stats dip.
   const [badgeUnlocks, setBadgeUnlocks] = useLocalStorage('dt.badges', {})
+  // The user's (editable) daily schedule.
+  const [schedule, setScheduleState] = useLocalStorage('dt.schedule', DEFAULT_SCHEDULE)
+
+  // Keep the live SCHEDULE binding in sync so every helper/component that reads
+  // it reflects edits. Done in render (idempotent) so it's applied before
+  // children read the schedule.
+  setActiveSchedule(schedule)
+
+  // ---- Schedule editing --------------------------------------------------
+  const updateSchedule = useCallback(
+    (next) => setScheduleState(Array.isArray(next) && next.length ? next : DEFAULT_SCHEDULE),
+    [setScheduleState]
+  )
+  const resetSchedule = useCallback(
+    () => setScheduleState(DEFAULT_SCHEDULE),
+    [setScheduleState]
+  )
+  const addBlock = useCallback(
+    (block) =>
+      setScheduleState((prev) => [...prev, block || makeBlock(prev.length)]),
+    [setScheduleState]
+  )
+  const updateBlock = useCallback(
+    (id, patch) =>
+      setScheduleState((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, ...patch } : b))
+      ),
+    [setScheduleState]
+  )
+  const removeBlock = useCallback(
+    (id) => setScheduleState((prev) => prev.filter((b) => b.id !== id)),
+    [setScheduleState]
+  )
+  // Move a block up (-1) or down (+1) in the list.
+  const moveBlock = useCallback(
+    (id, dir) =>
+      setScheduleState((prev) => {
+        const i = prev.findIndex((b) => b.id === id)
+        const j = i + dir
+        if (i < 0 || j < 0 || j >= prev.length) return prev
+        const next = [...prev]
+        ;[next[i], next[j]] = [next[j], next[i]]
+        return next
+      }),
+    [setScheduleState]
+  )
+  // Sort blocks by start time (the after-midnight tail sorts last).
+  const sortSchedule = useCallback(
+    () =>
+      setScheduleState((prev) =>
+        [...prev].sort((a, b) => {
+          const key = (t) => {
+            const [h, m] = t.split(':').map(Number)
+            return (h < WRAP_HOUR ? h + 24 : h) * 60 + m
+          }
+          return key(a.start) - key(b.start)
+        })
+      ),
+    [setScheduleState]
+  )
 
   // ---- Theme -------------------------------------------------------------
   useEffect(() => {
@@ -460,6 +524,7 @@ export function AppProvider({ children }) {
     let cursor = todayKey()
     // If today isn't done yet, don't break the streak — start from yesterday.
     if (!daySucceeded(days[cursor])) cursor = addDays(cursor, -1)
+    void schedule // recompute when the schedule changes
     while (daySucceeded(days[cursor])) {
       current += 1
       cursor = addDays(cursor, -1)
@@ -507,7 +572,7 @@ export function AppProvider({ children }) {
       projectCurrent,
       longestProject: Math.max(longestProject, projectCurrent),
     }
-  }, [days])
+  }, [days, schedule])
 
   // ---- Derived: skill streak --------------------------------------------
   const skillStreak = useMemo(() => {
@@ -567,7 +632,7 @@ export function AppProvider({ children }) {
       prevTierAt,
       unlockedRewards,
     }
-  }, [days, milestones])
+  }, [days, milestones, schedule])
 
   // ---- Derived: aggregate stats for badges & reports --------------------
   const achievementStats = useMemo(() => {
@@ -615,7 +680,7 @@ export function AppProvider({ children }) {
       milestonesCompleted: rewards.milestonesCompleted,
       rewardPoints: rewards.points,
     }
-  }, [days, streaks, rewards])
+  }, [days, streaks, rewards, schedule])
 
   // Evaluate badges and persist unlock timestamps the first time each unlocks.
   useEffect(() => {
@@ -696,6 +761,15 @@ export function AppProvider({ children }) {
     settings,
     setSettings,
     milestones,
+    // schedule (editable)
+    schedule,
+    updateSchedule,
+    resetSchedule,
+    addBlock,
+    updateBlock,
+    removeBlock,
+    moveBlock,
+    sortSchedule,
     // day ops
     getDay,
     updateDay,

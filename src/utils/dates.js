@@ -113,6 +113,20 @@ export function prettyTime(clock) {
   return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`
 }
 
+// Hour before which a start time is treated as the "after-midnight tail" of the
+// previous day's schedule (e.g. a 00:30 sleep block) rather than an early
+// morning start. Anything at/after this hour is a same-day block.
+export const WRAP_HOUR = 5
+
+// Resolve a block's real interval for the schedule-day `dateKey`, correctly
+// pushing the after-midnight tail (start hour < WRAP_HOUR) to the next calendar
+// day. This is the schedule-aware version used by the banner and accountability.
+export function scheduleDayInterval(block, dateKey) {
+  const startHour = Number(block.start.split(':')[0])
+  const base = startHour < WRAP_HOUR ? fromKey(addDays(dateKey, 1)) : fromKey(dateKey)
+  return blockInterval(block, base)
+}
+
 // Resolve a block's [start, end) as real Date objects anchored to `baseDate`.
 // If end <= start the block wraps past midnight, so end rolls to the next day.
 export function blockInterval(block, baseDate) {

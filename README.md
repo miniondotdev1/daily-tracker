@@ -46,6 +46,7 @@ nothing leaves your device.
 | 28 | **Accountability & penalties** — highlights finished vs **missed** blocks (missed = time passed, not done); each missed block earns a workout penalty (10 push-ups, 50 jumping jacks…) you can mark done | Today |
 | 29 | **Away mode** — heading out? Per-block "I was away" excuse, or one tap to **excuse the rest of today** so nothing counts against you | Today |
 | 30 | **Submission stats & shipping streak** — submissions/tasks per day & per month, plus a **no-gap daily shipping streak** with 10 / 20 / 25 / 50 / 100-day rewards and badges | Work |
+| 31 | **Cloud accounts & cross-device sync** *(optional)* — sign in with email/password, Google, or a magic link and your data follows you to every device. Offline-first, per-user row-level security. See **[SUPABASE_SETUP.md](SUPABASE_SETUP.md)** | Header |
 
 ## 🚀 Getting started
 

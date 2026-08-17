@@ -1,23 +1,24 @@
 import { useMemo } from 'react'
 import { useApp, completionRatio } from '../context/AppContext'
-import { SCHEDULE, BLOCK_TYPES, ACCENT_CLASSES } from '../constants/schedule'
+import { BLOCK_TYPES, ACCENT_CLASSES } from '../constants/schedule'
 import { prettyTime, weekKey, todayKey } from '../utils/dates'
 import { toast } from '../utils/toast'
 import CircularProgress, { progressColor } from './CircularProgress'
 import { Flame, Snow, Bolt } from './Icons'
 
 export default function ProgressPanel({ dateKey }) {
-  const { getDay, streaks, canFreeze, toggleFreeze, freezesUsedThisWeek } = useApp()
+  const { schedule, getDay, streaks, canFreeze, toggleFreeze, freezesUsedThisWeek } =
+    useApp()
   const record = getDay(dateKey)
   const ratio = completionRatio(record)
   const pct = Math.round(ratio * 100)
 
   const nextBlock = useMemo(
     () =>
-      SCHEDULE.find(
+      schedule.find(
         (b) => !record.blocks[b.id] && !record.excused?.[b.id] && !record.skipped?.[b.id]
       ),
-    [record.blocks, record.excused, record.skipped]
+    [schedule, record.blocks, record.excused, record.skipped]
   )
 
   const frozen = record.freeze

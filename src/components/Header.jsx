@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext'
 import { longDate, todayKey } from '../utils/dates'
 import { toast } from '../utils/toast'
 import ThemeToggle from './ThemeToggle'
+import AccountButton from './AccountButton'
 import { Download, Trash, Chevron } from './Icons'
 
 function greeting() {
@@ -116,6 +117,8 @@ export default function Header() {
               </div>
             )}
           </div>
+
+          <AccountButton />
         </div>
       </div>
 
